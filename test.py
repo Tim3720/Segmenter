@@ -129,3 +129,166 @@ if __name__ == "__main__":
         save_path,
     )
     s.main()
+
+    # def compute_initial_median_bg(self, index):
+    #     start_index = index - self.median_bg_size // 2
+    #     start_index = 0 if start_index < 0 else start_index
+    #     end_index = start_index + self.median_bg_size
+    #     end_index = self.n_files - 1 if end_index >= self.n_files else end_index
+
+    #     median_list = []
+    #     for index in range(start_index, end_index + 1):
+    #         img = cv.imread(self.filenames[index], cv.IMREAD_GRAYSCALE)
+    #         median_list.append(img)
+
+    #     return median_list, start_index, end_index
+
+    # def median_segmenter(self, indices):
+    #     start = time.perf_counter()
+    #     median_list, start_index, end_index = self.compute_initial_median_bg(indices[0])
+    #     next_img_queue = Queue(self.max_queue_size)
+    #     current_img_queue = Queue(self.max_queue_size)
+    #     sliding_index = 0
+
+    #     last_index = indices[-1] + self.median_bg_size // 2
+    #     last_index = self.n_files - 1 if last_index >= self.n_files else last_index
+    #     Thread(
+    #         target=self.preload,
+    #         args=(
+    #             next_img_queue,
+    #             end_index,
+    #             last_index,
+    #         ),
+    #     ).start()
+
+    #     Thread(
+    #         target=self.preload_current_img,
+    #         args=(current_img_queue, indices[0], indices[-1]),
+    #     ).start()
+
+    #     for i in indices:
+    #         if (
+    #             i > self.median_bg_size // 2
+    #             and i < self.n_files - self.median_bg_size // 2
+    #             and i != indices[0]
+    #         ):
+
+    #             next_img = next_img_queue.get(timeout=3)
+    #             median_list[sliding_index] = next_img
+    #             sliding_index += 1
+    #             sliding_index = (
+    #                 0 if sliding_index >= len(median_list) else sliding_index
+    #             )
+
+    #         bg = np.median(median_list, axis=0).astype(np.uint8)
+    #         gray, current_img, fn = current_img_queue.get(timeout=5)
+    #         corrected = cv.absdiff(gray, bg)
+
+    #         while threading.active_count() >= self.n_threads:
+    #             print("Waiting...")
+    #             time.sleep(0.01)
+
+    #         Thread(target=self.detect, args=(corrected, current_img, fn)).start()
+
+    #         self.bg_mean_vals[i] = np.mean(bg)  # type: ignore
+    #         self.img_mean_vals[i] = np.mean(gray)  # type: ignore
+
+    #     end = time.perf_counter()
+    #     total_duration = end - start
+    #     print(f"bg finished in {total_duration: .2f}s")
+
+    # def main_median_segmenter(self, cores, n_threads):
+    #     self.cores = cores
+    #     self.n_threads = n_threads
+
+    #     start = time.perf_counter()
+    #     splitted_indices = split(list(range(self.n_files)), self.cores)
+
+    #     print(f"Files: {self.n_files}; Cores: {self.cores}; Threads: {self.n_threads}")
+    #     with Pool(self.cores) as pool:
+    #         pool.map(self.median_segmenter, splitted_indices)
+
+    #     end = time.perf_counter()
+    #     total_duration = end - start
+
+    #     print(
+    #         f"Total time: {total_duration: .2f}s",
+    #         f"Avg time per img: {total_duration / len(self.filenames): .2f}s",
+    #     )
+
+    #     plt.plot(self.img_mean_vals, "bo", label="Mean values of images")
+    #     plt.plot(
+    #         self.bg_mean_vals,
+    #         label="Mean values of background images",
+    #         color="orange",
+    #     )
+    #     plt.legend()
+    #     plt.savefig(os.path.join(save_path, "development_of_mean_values_median.png"))
+    #     plt.close()
+    #     return total_duration
+
+    # def preload_median(self, queue, fns):
+    #     for i in range(len(fns)):
+    #         imgs = []
+    #         if i <= self.median_bg_size // 2:
+    #             start_index = 0
+    #             img_index = i
+    #             end_index = self.median_bg_size
+    #         elif i >= len(fns) - self.median_bg_size // 2:
+    #             start_index = len(fns) - self.median_bg_size
+    #             img_index = i - len(fns)
+    #             end_index = len(fns) - 1
+    #         else:
+    #             start_index = i - self.median_bg_size // 2
+    #             end_index = i + self.median_bg_size // 2 + 1
+    #             img_index = self.median_bg_size // 2 + 1
+
+    #         for j in range(start_index, end_index):
+    #             img = cv.imread(fns[j], cv.IMREAD_GRAYSCALE)
+    #             imgs.append(img)
+
+    #         queue.put((imgs, img_index))
+    #         # print(i, len(imgs), img_index)
+
+    # def median_segmenter2(self, index):
+    #     next_imgs, img_index = self.next_img_queue.get()
+    #     img = next_imgs[img_index]
+    #     bg = np.median(next_imgs, axis=0).astype(np.uint8)
+    #     corrected = cv.absdiff(img, bg)
+    #     self.detect(corrected, img, "")
+
+    # def main_median_segmenter2(self, cores):
+    #     self.cores = cores
+
+    #     start = time.perf_counter()
+
+    #     splitted = split(self.filenames, 3)
+
+    #     m = Manager()
+    #     self.next_img_queue = m.Queue(5)
+    #     for fns in splitted:
+    #         p = Process(target=self.preload_median, args=(self.next_img_queue, fns))
+    #         p.start()
+
+    #     print(f"Files: {self.n_files}; Cores: {self.cores}")
+    #     with Pool(self.cores) as pool:
+    #         pool.map(self.median_segmenter2, range(self.n_files))
+
+    #     end = time.perf_counter()
+    #     total_duration = end - start
+
+    #     print(
+    #         f"Total time: {total_duration: .2f}s",
+    #         f"Avg time per img: {total_duration / len(self.filenames): .2f}s",
+    #     )
+
+    #     # plt.plot(self.img_mean_vals, "bo", label="Mean values of images")
+    #     # plt.plot(
+    #     #     self.bg_mean_vals,
+    #     #     label="Mean values of background images",
+    #     #     color="orange",
+    #     # )
+    #     # plt.legend()
+    #     # plt.savefig(os.path.join(save_path, "development_of_mean_values_median.png"))
+    #     # plt.close()
+    #     return total_duration
