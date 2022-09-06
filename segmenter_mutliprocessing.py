@@ -1,6 +1,5 @@
 from multiprocessing import Pool, Manager, Process
 
-# from queue import Queue
 from threading import Thread
 import threading
 import time
@@ -9,6 +8,7 @@ import queue
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 
 
 def split(l, elements):
@@ -29,7 +29,7 @@ class SegmenterMultiProcessing:
         self.img_path = img_path
         self.save_path = save_path
         self.filenames = os.listdir(img_path)
-        self.filenames = self.filenames
+        # self.filenames = self.filenames[:100]
         self.filenames = list(map(lambda x: os.path.join(img_path, x), self.filenames))
         self.n_files = len(self.filenames)
 
@@ -43,7 +43,8 @@ class SegmenterMultiProcessing:
         self.counter = manager.list([0, 0])
         self.next_img_queue_median = manager.Queue(5)
 
-        self.min_area = 400
+        self.min_area = 25
+        self.min_var = 30
 
     def load_and_add(self, fns, sum_list):
         s = 0
@@ -90,9 +91,13 @@ class SegmenterMultiProcessing:
             i += 1
 
     def detect(self, corrected, img, fn):
+
         thresh = cv.threshold(corrected, 0, 255, cv.THRESH_TRIANGLE)[1]
         cnts = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)[0]
         counter = 0
+
+        rects, fns = [], []
+
         for cnt in cnts:
             if cv.contourArea(cnt) < self.min_area:
                 continue
@@ -100,34 +105,42 @@ class SegmenterMultiProcessing:
             crop_corr = corrected[y : y + h, x : x + w]
             crop = img[y : y + h, x : x + w]
             var = np.var(crop_corr)
-            if var < 30:
+            if var < self.min_var:
                 continue
 
             counter += 1
-            cv.imwrite(
-                os.path.join(self.save_path, fn[:-4] + f"_{counter}.jpg" + fn), crop
-            )
-            # cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            # cv.putText(
-            #     img,
-            #     str(var),
-            #     (x, y),
-            #     cv.FONT_HERSHEY_DUPLEX,
-            #     1,
-            #     (0, 255, 0),
-            #     1,
-            # )
+            crop_fn = fn[:-4] + f"_{counter}.jpg"
+
+            rects.append((x, y, w, h))
+            fns.append(crop_fn)
+
+            cv.imwrite(os.path.join(self.save_path, crop_fn), crop)
+            # cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 4)
 
         # cv.imwrite(
         #     os.path.join(self.save_path, fn),
         #     img,
         # )
 
+        # self.save_info(rects, fns, fn)
+
         self.counter[0] += 1
         p = (self.counter[0] / self.n_files * 100) // 10 * 10
         if p > self.counter[1]:
             self.counter[1] = p  # type: ignore
             print(f"{(self.counter[0] * 100 // self.n_files)}% done...")
+
+    def save_info(self, rects, fns, fn):
+        with open(os.path.join(self.save_path, fn[:-4] + ".csv"), "w") as f:
+            writer = csv.writer(f, delimiter=";")
+            x = [rect[0] for rect in rects]
+            y = [rect[1] for rect in rects]
+            w = [rect[2] for rect in rects]
+            h = [rect[3] for rect in rects]
+
+            data = zip(x, y, w, h, fns)
+            for row in data:
+                writer.writerow(row)
 
     def mean_segmenter(self, indices):
         first_index = indices[0]
@@ -163,6 +176,7 @@ class SegmenterMultiProcessing:
         ).start()
 
         threads = []
+
         for i in range(first_index, last_index + 1):
             if (
                 i > self.bg_size // 2
@@ -176,16 +190,19 @@ class SegmenterMultiProcessing:
 
             bg = bg_sum / self.bg_size
             bg = bg.astype(np.uint8)
-            gray, current_img, fn = current_img_queue.get(timeout=5)
+            gray, img, fn = current_img_queue.get(timeout=5)
             corrected = cv.absdiff(gray, bg)
+
+            neutral_bg = np.ones(bg_sum.shape, np.uint8)  # type: ignore
+            neutral_bg = neutral_bg * np.mean(bg)
+            img = (neutral_bg - corrected).astype(np.uint8)
+            img = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
 
             while threading.active_count() >= self.n_threads:
                 print("Waiting...", threading.enumerate())
                 time.sleep(0.01)
 
-            t = Thread(
-                target=self.detect, args=(corrected, current_img, fn.split("\\")[-1])
-            )
+            t = Thread(target=self.detect, args=(corrected, img, fn.split("\\")[-1]))
             t.start()
             threads.append(t)
 
@@ -256,9 +273,14 @@ class SegmenterMultiProcessing:
     def median_segmenter(self, index):
         next_imgs, fn = self.next_img_queue_median.get()
         img = cv.imread(fn)
+        # img = cv.resize(img, (2560, 2560))
         bg = np.median(next_imgs, axis=0).astype(np.uint8)
         bg = cv.resize(bg, (5120, 5120))
         corrected = cv.absdiff(cv.cvtColor(img, cv.COLOR_BGR2GRAY), bg)
+
+        neutral_bg = np.ones(bg.shape, np.uint8) * np.mean(bg)  # type: ignore
+        img = (neutral_bg - corrected).astype(np.uint8)
+
         self.detect(corrected, img, fn.split("\\")[-1])
 
     def main_median_segmenter(self, cores):
@@ -304,5 +326,5 @@ if __name__ == "__main__":
         os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(img_path, save_path)
-    duration = s.main_mean_segmenter(5, 6)
-    # duration = s.main_median_segmenter(11)
+    duration = s.main_mean_segmenter(cores=3, n_threads=6)
+    # duration = s.main_median_segmenter(12)
