@@ -29,7 +29,7 @@ class SegmenterMultiProcessing:
         self.img_path = img_path
         self.save_path = save_path
         self.filenames = os.listdir(img_path)
-        # self.filenames = self.filenames[:100]
+        self.filenames = self.filenames[:100]
         self.filenames = list(map(lambda x: os.path.join(img_path, x), self.filenames))
         self.n_files = len(self.filenames)
 
@@ -322,9 +322,9 @@ if __name__ == "__main__":
     img_path = "C:/Users/timka/Documents/Arbeit/Testprofil-M181-CTD-035-JPG"
     save_path = "Results/Crops_Mean_Half_Resolution"
 
-    for fn in os.listdir(save_path):
-        os.remove(os.path.join(save_path, fn))
+    # for fn in os.listdir(save_path):
+    #     os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(img_path, save_path)
-    duration = s.main_mean_segmenter(cores=3, n_threads=6)
+    duration = s.main_mean_segmenter(cores=1, n_threads=6)
     # duration = s.main_median_segmenter(12)
