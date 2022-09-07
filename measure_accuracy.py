@@ -64,6 +64,8 @@ class Test:
 
         cv.setMouseCallback(window_name, self.on_click)
 
+        fns = [os.path.join(path, "20220503-22374880_001.309bar_29.20C_12.jpg")]
+
         for fn in fns:
             self.img = cv.imread(fn)
             self.img = cv.resize(self.img, (1000, 1000))

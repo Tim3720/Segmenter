@@ -29,7 +29,7 @@ class SegmenterMultiProcessing:
         self.img_path = img_path
         self.save_path = save_path
         self.filenames = os.listdir(img_path)
-        self.filenames = self.filenames[:100]
+        # self.filenames = self.filenames[:500]
         self.filenames = list(map(lambda x: os.path.join(img_path, x), self.filenames))
         self.n_files = len(self.filenames)
 
@@ -45,6 +45,8 @@ class SegmenterMultiProcessing:
 
         self.min_area = 25
         self.min_var = 30
+
+        self.meta_data = manager.list([])
 
     def load_and_add(self, fns, sum_list):
         s = 0
@@ -122,7 +124,7 @@ class SegmenterMultiProcessing:
         #     img,
         # )
 
-        # self.save_info(rects, fns, fn)
+        self.save_info(rects, fns, fn)
 
         self.counter[0] += 1
         p = (self.counter[0] / self.n_files * 100) // 10 * 10
@@ -176,7 +178,7 @@ class SegmenterMultiProcessing:
         ).start()
 
         threads = []
-
+        meta_data = []
         for i in range(first_index, last_index + 1):
             if (
                 i > self.bg_size // 2
@@ -193,6 +195,10 @@ class SegmenterMultiProcessing:
             gray, img, fn = current_img_queue.get(timeout=5)
             corrected = cv.absdiff(gray, bg)
 
+            img_mean = np.mean(gray)
+            # img_std = np.std(gray)
+            meta_data.append((i, img_mean, fn))
+
             neutral_bg = np.ones(bg_sum.shape, np.uint8)  # type: ignore
             neutral_bg = neutral_bg * np.mean(bg)
             img = (neutral_bg - corrected).astype(np.uint8)
@@ -206,8 +212,10 @@ class SegmenterMultiProcessing:
             t.start()
             threads.append(t)
 
-            self.bg_mean_vals[i] = np.mean(bg)  # type: ignore
-            self.img_mean_vals[i] = np.mean(gray)  # type: ignore
+            # self.bg_mean_vals[i] = np.mean(bg)  # type: ignore
+            # self.img_mean_vals[i] = np.mean(gray)  # type: ignore
+
+        self.meta_data.extend(meta_data)
 
         for t in threads:
             t.join()
@@ -243,6 +251,13 @@ class SegmenterMultiProcessing:
         # plt.legend()
         # plt.savefig(os.path.join(save_path, "development_of_mean_values.png"))
         # plt.close()
+
+        self.meta_data.sort()
+        with open(os.path.join(self.save_path, "meta_data.csv"), "w") as f:
+            writer = csv.writer(f, delimiter=";")
+            for row in self.meta_data:
+                writer.writerow(row)
+
         return total_duration
 
     def preload_median(self, fns):
@@ -326,5 +341,5 @@ if __name__ == "__main__":
     #     os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(img_path, save_path)
-    duration = s.main_mean_segmenter(cores=1, n_threads=6)
+    duration = s.main_mean_segmenter(cores=3, n_threads=8)
     # duration = s.main_median_segmenter(12)
