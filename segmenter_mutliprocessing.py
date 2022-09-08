@@ -9,6 +9,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+from PIL import Image
 
 
 def split(l, elements):
@@ -30,16 +31,16 @@ class SegmenterMultiProcessing:
         self.save_path = save_path
         self.filenames = os.listdir(img_path)
         # self.filenames = self.filenames[:500]
-        self.filenames = list(map(lambda x: os.path.join(img_path, x), self.filenames))
-        self.n_files = len(self.filenames)
+        # self.filenames = [os.path.join(img_path, file) for file in self.filenames]
+        # self.n_files = len(self.filenames)
 
         self.bg_size = 100
         self.median_bg_size = 5
         self.max_queue_size = 10
 
         manager = Manager()
-        self.bg_mean_vals = manager.list([0 for _ in range(self.n_files)])
-        self.img_mean_vals = manager.list([0 for _ in range(self.n_files)])
+        # self.bg_mean_vals = manager.list([0 for _ in range(self.n_files)])
+        # self.img_mean_vals = manager.list([0 for _ in range(self.n_files)])
         self.counter = manager.list([0, 0])
         self.next_img_queue_median = manager.Queue(5)
 
@@ -47,6 +48,26 @@ class SegmenterMultiProcessing:
         self.min_var = 30
 
         self.meta_data = manager.list([])
+        self.filtered_files = manager.list([])
+
+        self.filter_files()
+
+    def check_file(self, file):
+        shape = (5120, 5120)
+        file = os.path.join(self.img_path, file)
+        if file.endswith(".jpg") and Image.open(file).size == shape:
+            self.filtered_files.append(file)
+
+    def filter_files(self):
+        s = time.perf_counter()
+        initial_n_files = len(self.filenames)
+        with Pool() as pool:
+            pool.map(self.check_file, self.filenames)
+        self.filenames = list(self.filtered_files)
+        self.n_files = len(self.filenames)
+        print(
+            f"Filtering done in {time.perf_counter() - s: .2f}s, {initial_n_files - self.n_files} files removed."
+        )
 
     def load_and_add(self, fns, sum_list):
         s = 0
