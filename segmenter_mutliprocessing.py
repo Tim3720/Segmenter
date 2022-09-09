@@ -50,12 +50,13 @@ class SegmenterMultiProcessing:
         self.meta_data = manager.list([])
         self.filtered_files = manager.list([])
 
+        self.shape = (5120, 5120)
+        self.valid_endings = [".jpg", ".png", ".tif"]
         self.filter_files()
 
     def check_file(self, file):
-        shape = (5120, 5120)
         file = os.path.join(self.img_path, file)
-        if file.endswith(".jpg") and Image.open(file).size == shape:
+        if file[-4:] in self.valid_endings and Image.open(file).size == self.shape:
             self.filtered_files.append(file)
 
     def filter_files(self):
