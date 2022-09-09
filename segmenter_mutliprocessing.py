@@ -30,7 +30,6 @@ class SegmenterMultiProcessing:
         self.img_path = img_path
         self.save_path = save_path
         self.filenames = os.listdir(img_path)
-        # self.filenames = self.filenames[:500]
         # self.filenames = [os.path.join(img_path, file) for file in self.filenames]
         # self.n_files = len(self.filenames)
 
@@ -139,7 +138,7 @@ class SegmenterMultiProcessing:
             fns.append(crop_fn)
 
             cv.imwrite(os.path.join(self.save_path, crop_fn), crop)
-            # cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 4)
+        #     cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 4)
 
         # cv.imwrite(
         #     os.path.join(self.save_path, fn),
@@ -215,22 +214,24 @@ class SegmenterMultiProcessing:
             bg = bg_sum / self.bg_size
             bg = bg.astype(np.uint8)
             gray, img, fn = current_img_queue.get(timeout=5)
+
             corrected = cv.absdiff(gray, bg)
 
             img_mean = np.mean(gray)
             # img_std = np.std(gray)
             meta_data.append((i, img_mean, fn))
 
-            neutral_bg = np.ones(bg_sum.shape, np.uint8)  # type: ignore
+            neutral_bg = np.ones(bg.shape, np.uint8)  # type: ignore
             neutral_bg = neutral_bg * np.mean(bg)
-            img = (neutral_bg - corrected).astype(np.uint8)
+            img = cv.absdiff(neutral_bg, corrected.astype(np.float64))
+            img = img.astype(np.uint8)
             img = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
 
             while threading.active_count() >= self.n_threads:
                 print("Waiting...", threading.enumerate())
                 time.sleep(0.01)
 
-            t = Thread(target=self.detect, args=(corrected, img, fn.split("\\")[-1]))
+            t = Thread(target=self.detect, args=(corrected, img, os.path.split(fn)[-1]))
             t.start()
             threads.append(t)
 
@@ -356,11 +357,11 @@ class SegmenterMultiProcessing:
 
 
 if __name__ == "__main__":
-    img_path = "C:/Users/timka/Documents/Arbeit/Testprofil-M181-CTD-035-JPG"
+    img_path = "C:/Users/timka/Documents/Arbeit/Testprofil-M181-CTD-035-JPG"  # Testprofil-M181-CTD-035-JPG
     save_path = "Results/Crops_Mean_Half_Resolution"
 
-    # for fn in os.listdir(save_path):
-    #     os.remove(os.path.join(save_path, fn))
+    for fn in os.listdir(save_path):
+        os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(img_path, save_path)
     duration = s.main_mean_segmenter(cores=3, n_threads=8)

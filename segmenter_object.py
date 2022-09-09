@@ -8,20 +8,21 @@ import queue
 
 
 class MeanSegmenter:
-    def __init__(
-        self, master, img_path, save_path, start_index, end_index, bg_size
-    ) -> None:
-        self.img_path = img_path
-        self.save_path = save_path
+    def __init__(self, master, start_index, end_index, bg_size, n_threads) -> None:
+        self.master = master
         self.start_index = start_index
         self.end_index = end_index
         self.bg_size = bg_size
-        self.files = master.files[start_index, end_index]
-        self.img_shape = master.shape
-        self.master = master
+        self.n_threads = n_threads
+        self.img_path = self.master.img_path
+        self.save_path = self.master.save_path
+        self.files = self.master.files[start_index, end_index]
+        self.img_shape = self.master.shape
 
     def start_thread(self, func, *args):
-        threading.Thread(target=func, args=args).start()
+        t = threading.Thread(target=func, args=args)
+        t.start()
+        return t
 
     def compute_starting_bg(self):
         start_index = self.start_index if self.start_index > self.bg_size // 2 else 0
@@ -128,3 +129,31 @@ class MeanSegmenter:
                 next_img, _ = next_img_queue.get(timeout=5)
                 bg_sum -= last_img
                 bg_sum += next_img
+
+            bg = bg_sum / self.bg_size
+            bg = bg.astype(np.uint8)  # type: ignore
+            gray, img, fn = current_img_queue.get(timeout=5)
+            corrected = cv.absdiff(gray, bg)
+
+            img_mean = np.mean(gray)
+            meta_data.append((i, img_mean, fn))
+
+            neutral_bg = np.ones(bg_sum.shape, np.uint8)  # type: ignore
+            neutral_bg = neutral_bg * np.mean(bg)
+            img = (neutral_bg - corrected).astype(np.uint8)
+            img = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
+
+            while threading.active_count() >= self.n_threads:
+                print("Waiting...", threading.enumerate())
+                time.sleep(0.01)
+
+            t = self.start_thread(self.detect, corrected, img, fn.split("\\")[-1])
+            threads.append(t)
+
+        self.master.meta_data.extend(meta_data)
+        for t in threads:
+            t.join()
+
+        end = time.perf_counter()
+        total_duration = end - start
+        print(f"bg finished in {total_duration: .2f}s")
