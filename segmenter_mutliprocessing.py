@@ -360,8 +360,8 @@ if __name__ == "__main__":
     img_path = "C:/Users/timka/Documents/Arbeit/Testprofil-M181-CTD-035-JPG"  # Testprofil-M181-CTD-035-JPG
     save_path = "Results/Crops_Mean_Half_Resolution"
 
-    for fn in os.listdir(save_path):
-        os.remove(os.path.join(save_path, fn))
+    # for fn in os.listdir(save_path):
+    #     os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(img_path, save_path)
     duration = s.main_mean_segmenter(cores=3, n_threads=8)
