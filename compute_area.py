@@ -71,15 +71,20 @@ def compute_area_from_csv(file):
             print(f"{file} has wrong information or is empty")
         else:
             for (x, y, w, h, crop_fn) in data:
-                cruise, station, device, pos, date, time, id = crop_fn.split("_")
+                cruise, station, device, pos, date, time, id = crop_fn[:-4].split("_")
                 depth, lat, lon = pos.split("-")
+                depth = depth[:-4]
                 # time, depth, cruise, id = crop_fn[:-4].split("_")
                 # date, station, device, lat, lon = 0, 0, 0, 0, 0
                 enhanced_area, area = compute_area_from_crop(
                     os.path.join(path, crop_fn)
                 )
+                enhanced_area_microns = enhanced_area*(13.5**2)
+                area_microns = area*(13.5**2)
                 enhanced_esd = 2 * sqrt(enhanced_area / pi)
                 esd = 2 * sqrt(area / pi)
+                enhanced_esd_microns = 2 * sqrt(enhanced_area_microns / pi)
+                esd_microns = 2 * sqrt(area_microns / pi)
                 row = [
                     id,
                     crop_fn,
@@ -88,9 +93,13 @@ def compute_area_from_csv(file):
                     w,
                     h,
                     area,
+                    area_microns,
                     esd,
+                    esd_microns,
                     enhanced_area,
+                    enhanced_area_microns,
                     enhanced_esd,
+                    enhanced_esd_microns,
                     depth,
                     date,
                     time,
@@ -115,9 +124,13 @@ def compute_area_from_csv(file):
                 "width in px",
                 "height in px",
                 "area in px",
+                "area in um^2",
                 "esd in px",
+                "esd in um",
                 "enhanced_area in px",
+                "enhanced_area in um^2",
                 "enhanced_esd in px",
+                "enhanced_esd in um",
                 "depth in m",
                 "date",
                 "time",
@@ -140,7 +153,8 @@ if __name__ == "__main__":
     from multiprocessing import Pool
     from time import perf_counter
 
-    path = "Results/Crops_Mean_Half_Resolution"
+    #path = "Results/Crops_Mean_Half_Resolution"
+    path = "/Users/vdausmann/yolo/datasets/HE570/Results/Crops_Mean_Full_Resolution/test"
     files = os.listdir(path)
     csv_files = [os.path.join(path, file) for file in files if file.endswith(".csv")]
     s = perf_counter()
