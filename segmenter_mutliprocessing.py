@@ -110,11 +110,10 @@ class SegmenterMultiProcessing:
             fn = self.filenames[i]
             img = cv.imread(fn)
             # img = cv.resize(img, (2560, 2560))
-            queue.put((cv.cvtColor(img, cv.COLOR_BGR2GRAY), img, fn.split("\\")[-1]))
+            queue.put((cv.cvtColor(img, cv.COLOR_BGR2GRAY), img, os.path.split(fn)[-1]))
             i += 1
 
     def detect(self, corrected, img, fn):
-
         thresh = cv.threshold(corrected, 0, 255, cv.THRESH_TRIANGLE)[1]
         cnts = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)[0]
         counter = 0
@@ -231,7 +230,7 @@ class SegmenterMultiProcessing:
                 print("Waiting...", threading.enumerate())
                 time.sleep(0.01)
 
-            t = Thread(target=self.detect, args=(corrected, img, os.path.split(fn)[-1]))
+            t = Thread(target=self.detect, args=(corrected, img, fn))
             t.start()
             threads.append(t)
 
@@ -360,9 +359,9 @@ if __name__ == "__main__":
     img_path = "C:/Users/timka/Documents/Arbeit/Testprofil-M181-CTD-035-JPG"  # Testprofil-M181-CTD-035-JPG
     save_path = "Results/Crops_Mean_Half_Resolution"
 
-    # for fn in os.listdir(save_path):
-    #     os.remove(os.path.join(save_path, fn))
+    for fn in os.listdir(save_path):
+        os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(img_path, save_path)
-    duration = s.main_mean_segmenter(cores=3, n_threads=8)
+    duration = s.main_mean_segmenter(cores=2, n_threads=8)
     # duration = s.main_median_segmenter(12)
