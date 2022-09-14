@@ -46,7 +46,7 @@ def measure_callback(path_to_labeled, path_to_crops):
             if point in point_dict.keys():
                 print(point_dict[point])
             else:
-                print("Not found")
+                print("Not found", img)
 
 
 if __name__ == "__main__":
