@@ -41,18 +41,15 @@ def compute_area_from_crop(fn):
     org_area = max(org_areas)
 
     areas = []
+    max_area = org_area
     enhanced = enhance_contrast(img)
     thresh = cv.threshold(enhanced, 0, 255, cv.THRESH_TRIANGLE)[1]
     cnts = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)[0]
     for cnt in cnts:
         area = cv.contourArea(cnt)
         areas.append(area)
-    if areas:
+    if areas and max(areas) / org_area > 0.5:
         max_area = max(areas)
-        if max_area / org_area < 0.5:
-            max_area = org_area
-    else:
-        max_area = org_area
 
     return max_area, org_area
 
@@ -74,8 +71,8 @@ def compute_area_from_csv(file):
                 enhanced_area, area = compute_area_from_crop(
                     os.path.join(path, crop_fn)
                 )
-                enhanced_area_microns = enhanced_area*(13.5**2)
-                area_microns = area*(13.5**2)
+                enhanced_area_microns = enhanced_area * (13.5**2)
+                area_microns = area * (13.5**2)
                 enhanced_esd = 2 * sqrt(enhanced_area / pi)
                 esd = 2 * sqrt(area / pi)
                 enhanced_esd_microns = 2 * sqrt(enhanced_area_microns / pi)
@@ -148,8 +145,10 @@ if __name__ == "__main__":
     from multiprocessing import Pool
     from time import perf_counter
 
-    #path = "Results/Crops_Mean_Half_Resolution"
-    path = "/Users/vdausmann/yolo/datasets/HE570/Results/Crops_Mean_Full_Resolution/test"
+    # path = "Results/Crops_Mean_Half_Resolution"
+    path = (
+        "/Users/vdausmann/yolo/datasets/HE570/Results/Crops_Mean_Full_Resolution/test"
+    )
     files = os.listdir(path)
     csv_files = [os.path.join(path, file) for file in files if file.endswith(".csv")]
     s = perf_counter()
