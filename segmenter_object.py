@@ -175,3 +175,18 @@ class MeanSegmenter:
         end = time.perf_counter()
         total_duration = end - start
         print(f"bg finished in {total_duration: .2f}s")
+
+
+class MedianSegmenter:
+    def __init__(self, master, start_index, end_index, bg_size, n_threads) -> None:
+        self.master = master
+        self.start_index = start_index
+        self.end_index = end_index
+        self.bg_size = bg_size
+        self.n_threads = n_threads
+        self.img_path = self.master.img_path
+        self.save_path = self.master.save_path
+        self.files = self.master.files
+        self.save_crops = self.master.save_crops
+        self.save_full_imgs = self.master.save_full_imgs
+        self.resize = self.master.resize

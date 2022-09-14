@@ -19,7 +19,7 @@ def split(l, elements):
     return res
 
 
-class SegmenterMultiProcessing:
+class Segmenter:
     def __init__(
         self, img_path, save_path, save_full_imgs=False, save_crops=True, resize=None
     ):
@@ -71,14 +71,17 @@ class SegmenterMultiProcessing:
         )
         segmenter.segment()
 
-    def main(self, cores, n_threads):
+    def mean(self, cores, n_threads):
         start = time.perf_counter()
         self.n_threads = n_threads
         splitted_indices = split(range(self.n_files), cores)
         print(f"Files: {self.n_files}; Cores: {cores}; Threads: {n_threads}")
 
-        with Pool(cores) as pool:
-            pool.map(self.start_segmenter, splitted_indices)
+        if cores > 1:
+            with Pool(cores) as pool:
+                pool.map(self.start_segmenter, splitted_indices)
+        else:
+            self.start_segmenter(indices=splitted_indices[0])
 
         end = time.perf_counter()
         total_duration = end - start
@@ -104,7 +107,7 @@ if __name__ == "__main__":
     for fn in os.listdir(save_path):
         os.remove(os.path.join(save_path, fn))
 
-    s = SegmenterMultiProcessing(
-        img_path, save_path, save_full_imgs=False, save_crops=True, resize=(2560, 2560)
+    s = Segmenter(
+        img_path, save_path, save_full_imgs=False, save_crops=False, resize=None
     )
-    s.main(cores=4, n_threads=8)
+    s.mean(cores=4, n_threads=8)
