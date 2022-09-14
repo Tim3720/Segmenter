@@ -105,9 +105,6 @@ if __name__ == "__main__":
         os.remove(os.path.join(save_path, fn))
 
     s = SegmenterMultiProcessing(
-        img_path,
-        save_path,
-        save_full_imgs=False,
-        save_crops=True,  #  , resize=(2560, 2560)
+        img_path, save_path, save_full_imgs=False, save_crops=True, resize=(2560, 2560)
     )
     s.main(cores=4, n_threads=8)

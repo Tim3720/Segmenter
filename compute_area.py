@@ -37,12 +37,8 @@ def compute_area_from_crop(fn):
     cnts = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)[0]
     for cnt in cnts:
         area = cv.contourArea(cnt)
-        if area > 25:
-            org_areas.append(area)
-    if org_areas:
-        org_area = max(org_areas)
-    else:
-        org_area = 0
+        org_areas.append(area)
+    org_area = max(org_areas)
 
     areas = []
     enhanced = enhance_contrast(img)
@@ -50,8 +46,7 @@ def compute_area_from_crop(fn):
     cnts = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)[0]
     for cnt in cnts:
         area = cv.contourArea(cnt)
-        if area > 25:
-            areas.append(area)
+        areas.append(area)
     if areas:
         max_area = max(areas)
         if max_area / org_area < 0.5:
@@ -146,37 +141,6 @@ if __name__ == "__main__":
     s = perf_counter()
     with Pool() as pool:
         res = pool.map(compute_area_from_csv, csv_files)
-
-    # data = []
-    # for res_file in res:
-    #     data.extend(res_file)
-    # with open(os.path.join(path, "object_information.csv"), "w") as f:
-    #     writer = csv.writer(f, delimiter=";")
-    # header = [
-    #     "ID",
-    #     "filename",
-    #     "min_x",
-    #     "min_y",
-    #     "width",
-    #     "height",
-    #     "area",
-    #     "esd",
-    #     "enhanced_area",
-    #     "enhanced_esd",
-    #     "depth",
-    #     "date",
-    #     "time",
-    #     "cruise",
-    #     "station",
-    #     "device",
-    #     "latitude",
-    #     "longitude",
-    #     "date",
-    #     "time",
-    # ]
-    #     writer.writerow(header)
-    #     for row in data:
-    #         writer.writerow(row)
 
     duration = perf_counter() - s
     print(
